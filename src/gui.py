@@ -10,9 +10,55 @@ from PyQt6.QtCore import Qt, QTimer
 import pyqtgraph as pg
 import pyqtgraph.exporters
 
+import serial
+import time
+
+class ArduinoSerial():
+    def __init__(self, port: str, baudrate: int = 38400, timeout: float = 1):
+        self.port = port
+        self.baudrate = baudrate
+        self.timeout = timeout
+        self.connection = None
+
+    def connect(self):
+        try:
+            self.connection = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
+            time.sleep(2) # Wait for Arduino reset
+            print(f"Connected to {self.port} at {self.baudrate} baud.")
+        except serial.SerialException as e:
+            print(f"Failed to connect: {e}")
+
+    def disconnect(self):
+        if self.connection and self.connection.is_open:
+            self.connection.close()
+            print('Disconnected.')
+
+    def send(self, data: str):
+        if self.connection and self.connection.is_open:
+            self.connection.write(data.encode())
+            print(f"Sent: {data}")
+
+    def receive(self) -> str:
+        if self.connection and self.connection.is_open:
+            if self.connection.in_waiting > 0:
+                return self.connection.readline().decode().strip()
+        return ""
+
+    def is_connected(self) -> bool:
+        return self.connection is not None and self.connection.is_open
+
+    def __del__(self):
+        self.disconnect()
+
+
 class PlotApp(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        ############# Connect Devices ##############
+        self.ard = ArduinoSerial(port="/dev/usb")
+
+        ############# Setup GUI ###############
         self.setWindowTitle("fluid-control")
 
         # Central widget and layout
