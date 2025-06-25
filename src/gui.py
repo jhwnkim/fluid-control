@@ -56,7 +56,8 @@ class PlotApp(QMainWindow):
         super().__init__()
 
         ############# Connect Devices ##############
-        self.ard = ArduinoSerial(port="/dev/usb")
+        self.ard = ArduinoSerial(port="/dev/cu.usbmodem23329801")
+        self.ard.connect()
 
         ############# Setup GUI ###############
         self.setWindowTitle("fluid-control")
@@ -138,7 +139,7 @@ class PlotApp(QMainWindow):
         self.grid_checkbox.stateChanged.connect(self.toggle_grid)
         plots_layout.addWidget(self.grid_checkbox, plots_row, 0, 1, 1)
 
-        self.toggle_timer_button = QPushButton("Start sensors")
+        self.toggle_timer_button = QPushButton("Start Real-Time")
         self.toggle_timer_button.setCheckable(True)
         self.toggle_timer_button.clicked.connect(self.toggle_timer)
         plots_layout.addWidget(self.toggle_timer_button, plots_row, 1, 1, 2) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
@@ -149,9 +150,14 @@ class PlotApp(QMainWindow):
         self.setCentralWidget(central_widget)
 
         # Timer for real-time updates
-        self.timer = QTimer()
-        self.timer.setInterval(500)
-        self.timer.timeout.connect(self.update_plot)
+        self.timer_ui = QTimer()
+        self.timer_ui.setInterval(500)
+        self.timer_ui.timeout.connect(self.update_plot)
+
+        # Timer for Arduino data poll
+        self.timer_data = QTimer()
+        self.timer_data.setInterval(100)
+        self.timer_data.timeout.connect(self.grab_data)
 
         # Data storage
         self.x = np.linspace(0, 10, 500)
@@ -211,16 +217,25 @@ class PlotApp(QMainWindow):
         #     self.plot_widget.plot(self.x, y_cos, pen='b', name="Cosine")
         #     self.y.append(("Cosine", y_cos))
 
+    def grab_data(self):
+        # self.ard.send('READ A0\n')
+        # time.sleep(1.0)
+        data = self.ard.receive()
+        print(data)
+
+
     def toggle_grid(self):
         show = self.grid_checkbox.isChecked()
         self.plot_widget.showGrid(x=show, y=show)
 
     def toggle_timer(self):
         if self.toggle_timer_button.isChecked():
-            self.timer.start()
+            self.timer_ui.start()
+            self.timer_data.start()
             self.toggle_timer_button.setText("Stop Real-Time")
         else:
-            self.timer.stop()
+            self.timer_data.stop()
+            self.timer_ui.stop()
             self.toggle_timer_button.setText("Start Real-Time")
 
     def export_image(self):
