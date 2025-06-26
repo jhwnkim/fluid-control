@@ -21,36 +21,36 @@ int val = -1;
 
 void loop() {
 
-  val = analogRead(A0);
-  Serial.println("Hello");
-  digitalWrite(LED_BUILTIN, HIGH);
+  // val = analogRead(A0);
+  // Serial.println("Hello");
+  // digitalWrite(LED_BUILTIN, HIGH);
 
-  delay(500);
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(500);
+  // delay(500);
+  // digitalWrite(LED_BUILTIN, LOW);
+  // delay(500);
 
-  // if (Serial.available() > 0) {
-  //   String command = Serial.readStringUntil('\n'); // Read incoming command
-  //   command.trim(); // Remove any trailing newline or spaces
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n'); // Read incoming command
+    command.trim(); // Remove any trailing newline or spaces
 
-  //   if (command.startsWith("READ")) {
-  //     int value = -1;
+    if (command.startsWith("READ")) {
+      int value = -1;
 
-  //     if (command.endsWith("A0")) value = analogRead(A0);
-  //     else if (command.endsWith("A1")) value = analogRead(A1);
-  //     else if (command.endsWith("A2")) value = analogRead(A2);
-  //     else if (command.endsWith("A3")) value = analogRead(A3);
-  //     else if (command.endsWith("A4")) value = analogRead(A4);
-  //     else if (command.endsWith("A5")) value = analogRead(A5);
+      if (command.endsWith("A0")) value = analogRead(A0);
+      else if (command.endsWith("A1")) value = analogRead(A1);
+      else if (command.endsWith("A2")) value = analogRead(A2);
+      else if (command.endsWith("A3")) value = analogRead(A3);
+      else if (command.endsWith("A4")) value = analogRead(A4);
+      else if (command.endsWith("A5")) value = analogRead(A5);
 
-  //     if (value != -1) {
-  //       // Serial.print("ADC Value = ");
-  //       Serial.println(value);
-  //     } else {
-  //       Serial.println("Invalid pin. Use A0 to A5.");
-  //     }
-  //   } else {
-  //     Serial.println("Unknown command. Use READ A0 to READ A5.");
-  //   }
-  // }
+      if (value != -1) {
+        // Serial.print("ADC Value = ");
+        Serial.println(value);
+      } else {
+        Serial.println("Invalid pin. Use A0 to A5.");
+      }
+    } else {
+      Serial.println("Unknown command. Use READ A0 to READ A5.");
+    }
+  }
 }

@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 import pyqtgraph as pg
 import pyqtgraph.exporters
+from collections import deque
 
 import serial
 import time
@@ -36,7 +37,7 @@ class ArduinoSerial():
     def send(self, data: str):
         if self.connection and self.connection.is_open:
             self.connection.write(data.encode())
-            print(f"Sent: {data}")
+            # print(f"Sent: {data}")
 
     def receive(self) -> str:
         if self.connection and self.connection.is_open:
@@ -58,6 +59,13 @@ class PlotApp(QMainWindow):
         ############# Connect Devices ##############
         self.ard = ArduinoSerial(port="/dev/cu.usbmodem23329801")
         self.ard.connect()
+
+        ############# Initialize variables ##############
+        self.data_window_len = 50
+        self.num_sensor_channels = 3
+
+        self.adc_data = [deque(maxlen=self.data_window_len) for _ in range(self.num_sensor_channels)]
+
 
         ############# Setup GUI ###############
         self.setWindowTitle("fluid-control")
@@ -110,16 +118,18 @@ class PlotApp(QMainWindow):
 
 
         # Plot sections
-        num_sensor_channels = 3
         # self.plot_widgets = []
         plots_row = 0
 
         self.plot_widget = pg.GraphicsLayoutWidget(show=True, title="Sensors")
-        self.sensor_plots = []
-        for i in range(num_sensor_channels):
-            self.sensor_plots.append(self.plot_widget.addPlot(row=i, col=0, title=f"Sensor {i+1}"))
+        self.sensor_plot_items = []
+        self.sensor_plot_data_items = []
+        for i in range(self.num_sensor_channels):
+            self.sensor_plot_items.append(self.plot_widget.addPlot(row=i, col=0, title=f"Sensor {i+1}"))
             if i > 0:
-                self.sensor_plots[i].setXLink(self.sensor_plots[0])
+                self.sensor_plot_items[i].setXLink(self.sensor_plot_items[0])
+            self.sensor_plot_data_items.append(self.sensor_plot_items[-1].plot())
+
 
 
         # for i in range(num_sensor_channels):
@@ -151,12 +161,12 @@ class PlotApp(QMainWindow):
 
         # Timer for real-time updates
         self.timer_ui = QTimer()
-        self.timer_ui.setInterval(500)
+        self.timer_ui.setInterval(100)
         self.timer_ui.timeout.connect(self.update_plot)
 
         # Timer for Arduino data poll
         self.timer_data = QTimer()
-        self.timer_data.setInterval(100)
+        self.timer_data.setInterval(50)
         self.timer_data.timeout.connect(self.grab_data)
 
         # Data storage
@@ -201,8 +211,9 @@ class PlotApp(QMainWindow):
         QMessageBox.information(self, "About", "PyQt6 + PyQtGraph Plotting App\nCreated with ❤️")
 
     def update_plot(self):
-        print('update plot: read values from sensors and update plots')
-
+        # print('update plot: read values from sensors and update plots')
+        for ch in range(self.num_sensor_channels):
+            self.sensor_plot_data_items[ch].setData(list(self.adc_data[ch]))
         # freq = self.freq_slider.value()
         # func = self.function_selector.currentText()
         # self.plot_widget.clear()
@@ -218,10 +229,13 @@ class PlotApp(QMainWindow):
         #     self.y.append(("Cosine", y_cos))
 
     def grab_data(self):
-        # self.ard.send('READ A0\n')
-        # time.sleep(1.0)
-        data = self.ard.receive()
-        print(data)
+        for ch in range(self.num_sensor_channels):
+            self.ard.send(f"READ A{ch}\n")
+            time.sleep(0.025)
+            data = self.ard.receive()
+            # print(f"Ch{ch}: {data}")
+            if len(data) > 0:
+                self.adc_data[ch].append(int(data))
 
 
     def toggle_grid(self):
