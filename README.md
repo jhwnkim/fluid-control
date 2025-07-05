@@ -1,20 +1,32 @@
+
 # fluid-control
+
 fluid-control is a simple GUI for controlling pumps and sensors for fluid control in laboratory experiments.
 
 ## Setup
-1. Install python 3.13.x 
-2. Create virtual environment and install requirements
-   * For Windows
-```
-python -m venv fluid
-~/venv/Scripts/activate.bat
-pip install -r requirements.txt
-```
-   * For Mac
-```
-python -m venv fluid
-~/fluid/bin/activate
-pip install -r requirements.txt
-```
-3. 
+
+### Setup Virtual environment
+
+* Using [Python installer](https://www.python.org/downloads/release/python-31210/)
+  * Download install and check add to PATH variable
+  * create virtual environment and activate
+    * On Windows
+
+            python -m venv fluid
+            ~/fluid/Scripts/activate.bat
+
+    * On Mac
+
+            python -m venv fluid
+            ~/fluid/bin/activate
+
+* Using [anaconda](https://www.anaconda.com/download/)
+  * create virtual environment and activate
+
+        conda create --name fluid python=3.12
+        conda activate fluid
+
+* Install Requirements
+
+        pip install -r requirements.txt
 
