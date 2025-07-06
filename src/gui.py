@@ -12,6 +12,7 @@ import pyqtgraph.exporters
 from collections import deque
 
 import serial
+import serial.tools.list_ports
 import time
 
 class ArduinoSerial():
@@ -23,6 +24,17 @@ class ArduinoSerial():
 
     def connect(self):
         try:
+            # If port is not set scan ports
+            if self.port == "":
+                ports = serial.tools.list_ports.comports()
+                select_idx = -1
+                for idx, port in enumerate(ports):
+                    print(f"Device: {port.device}, Description: {port.description}")
+                    if 'Arduino' in port.description:
+                        print(f"Arduino found on {port.device}")
+                        self.port = port.device
+                        select_idx = idx
+
             self.connection = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
             time.sleep(2) # Wait for Arduino reset
             print(f"Connected to {self.port} at {self.baudrate} baud.")
@@ -57,12 +69,12 @@ class PlotApp(QMainWindow):
         super().__init__()
 
         ############# Connect Devices ##############
-        self.ard = ArduinoSerial(port="/dev/cu.usbmodem23329801")
+        self.ard = ArduinoSerial(port="")
         self.ard.connect()
 
         ############# Initialize variables ##############
         self.data_window_len = 50
-        self.num_sensor_channels = 3
+        self.num_sensor_channels = 2
 
         self.adc_data = [deque(maxlen=self.data_window_len) for _ in range(self.num_sensor_channels)]
 
@@ -125,11 +137,15 @@ class PlotApp(QMainWindow):
         self.sensor_plot_items = []
         self.sensor_plot_data_items = []
         for i in range(self.num_sensor_channels):
-            self.sensor_plot_items.append(self.plot_widget.addPlot(row=i, col=0, title=f"Sensor {i+1}"))
+            self.sensor_plot_items.append(self.plot_widget.addPlot(row=i, col=0, title=f"ADC Channel {i}"))
             if i > 0:
                 self.sensor_plot_items[i].setXLink(self.sensor_plot_items[0])
             self.sensor_plot_data_items.append(self.sensor_plot_items[-1].plot())
 
+        # Add Flow sensor plot
+        self.sensor_plot_items.append(self.plot_widget.addPlot(row=self.num_sensor_channels, col=0, title=f"Flow rate"))
+        self.sensor_plot_items[-1].setXLink(self.sensor_plot_items[0])
+        self.sensor_plot_data_items.append(self.sensor_plot_items[-1].plot())
 
 
         # for i in range(num_sensor_channels):
@@ -208,7 +224,7 @@ class PlotApp(QMainWindow):
         about_action.triggered.connect(self.show_about_dialog)
 
     def show_about_dialog(self):
-        QMessageBox.information(self, "About", "PyQt6 + PyQtGraph Plotting App\nCreated with ❤️")
+        QMessageBox.information(self, "About", "Fluid Control GUI\n Created using PyQt6 + PyQtGraph")
 
     def update_plot(self):
         # print('update plot: read values from sensors and update plots')
@@ -229,8 +245,10 @@ class PlotApp(QMainWindow):
         #     self.y.append(("Cosine", y_cos))
 
     def grab_data(self):
-        for ch in range(self.num_sensor_channels):
-            self.ard.send(f"READ A{ch}\n")
+        
+        for ch in ['A0', 'A1', 'FS']:
+            self.ard.reset_input_buffer()
+            self.ard.send(f"READ {ch}\n")
             time.sleep(0.025)
             data = self.ard.receive()
             # print(f"Ch{ch}: {data}")
