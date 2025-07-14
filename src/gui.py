@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import csv
+import struct
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QSlider, QComboBox, QCheckBox, QLabel, QFileDialog,
@@ -54,8 +55,13 @@ class ArduinoSerial():
     def receive(self) -> str:
         if self.connection and self.connection.is_open:
             if self.connection.in_waiting > 0:
-                return self.connection.readline().decode().strip()
+                return self.connection.readline()
+                # return self.connection.readline().decode().strip()
         return ""
+    
+    def reset_input_buffer(self):
+        if self.connection and self.connection.is_open:
+            self.connection.reset_input_buffer()
 
     def is_connected(self) -> bool:
         return self.connection is not None and self.connection.is_open
@@ -76,7 +82,11 @@ class PlotApp(QMainWindow):
         self.data_window_len = 50
         self.num_sensor_channels = 2
 
-        self.adc_data = [deque(maxlen=self.data_window_len) for _ in range(self.num_sensor_channels)]
+        self.sensors = ['A0', 'A1', 'FS']
+        # self.adc_data = [deque(maxlen=self.data_window_len) for _ in range(self.num_sensor_channels)]
+        self.adc_data = {}
+        for ch in self.sensors:
+            self.adc_data[ch] = deque(maxlen=self.data_window_len)
 
 
         ############# Setup GUI ###############
@@ -182,7 +192,7 @@ class PlotApp(QMainWindow):
 
         # Timer for Arduino data poll
         self.timer_data = QTimer()
-        self.timer_data.setInterval(50)
+        self.timer_data.setInterval(500)
         self.timer_data.timeout.connect(self.grab_data)
 
         # Data storage
@@ -228,8 +238,12 @@ class PlotApp(QMainWindow):
 
     def update_plot(self):
         # print('update plot: read values from sensors and update plots')
-        for ch in range(self.num_sensor_channels):
-            self.sensor_plot_data_items[ch].setData(list(self.adc_data[ch]))
+        # for ch in range(self.num_sensor_channels):
+        plot_idx = 0
+        for ch in self.sensors:
+            self.sensor_plot_data_items[plot_idx].setData(list(self.adc_data[ch]))
+            plot_idx += 1
+
         # freq = self.freq_slider.value()
         # func = self.function_selector.currentText()
         # self.plot_widget.clear()
@@ -246,14 +260,24 @@ class PlotApp(QMainWindow):
 
     def grab_data(self):
         
-        for ch in ['A0', 'A1', 'FS']:
+        for ch in self.sensors:
             self.ard.reset_input_buffer()
             self.ard.send(f"READ {ch}\n")
             time.sleep(0.025)
             data = self.ard.receive()
-            # print(f"Ch{ch}: {data}")
+            print(f"Sensor {ch}: {data}")
             if len(data) > 0:
-                self.adc_data[ch].append(int(data))
+                if data[0] == int.from_bytes(b'R'):
+                    payloadLength = data[1]
+                    print(f' Read packet received with length {payloadLength} bytes')
+                    if ch == 'FS':
+                        self.adc_data[ch].append(struct.unpack('<f', data[2:2+payloadLength])[0])
+                    else:
+                        self.adc_data[ch].append(int.from_bytes(data[2:2+payloadLength], byteorder='little'))
+                    print(f' Read packet data: {self.adc_data[ch][-1]}')
+
+                    
+
 
 
     def toggle_grid(self):
