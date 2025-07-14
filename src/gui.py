@@ -17,7 +17,7 @@ import serial.tools.list_ports
 import time
 
 class ArduinoSerial():
-    def __init__(self, port: str, baudrate: int = 38400, timeout: float = 1):
+    def __init__(self, port: str, baudrate: int = 500000, timeout: float = 1):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
@@ -73,6 +73,9 @@ class ArduinoSerial():
 class PlotApp(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        self.sample_period_ms = 100
+        self.display_period_ms = 110
 
         ############# Connect Devices ##############
         self.ard = ArduinoSerial(port="")
@@ -187,12 +190,12 @@ class PlotApp(QMainWindow):
 
         # Timer for real-time updates
         self.timer_ui = QTimer()
-        self.timer_ui.setInterval(100)
+        self.timer_ui.setInterval(self.display_period_ms)
         self.timer_ui.timeout.connect(self.update_plot)
 
         # Timer for Arduino data poll
         self.timer_data = QTimer()
-        self.timer_data.setInterval(500)
+        self.timer_data.setInterval(self.sample_period_ms)
         self.timer_data.timeout.connect(self.grab_data)
 
         # Data storage
@@ -263,7 +266,7 @@ class PlotApp(QMainWindow):
         for ch in self.sensors:
             self.ard.reset_input_buffer()
             self.ard.send(f"READ {ch}\n")
-            time.sleep(0.025)
+            time.sleep(0.020)
             data = self.ard.receive()
             print(f"Sensor {ch}: {data}")
             if len(data) > 0:

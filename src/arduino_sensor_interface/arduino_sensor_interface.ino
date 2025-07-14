@@ -38,7 +38,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 
   // Initialize serial communication
-  Serial.begin(38400);
+  Serial.begin(500000);
   while (!Serial) ;    // Wait for serial port to connect (for Leonardo/Micro)
 
   // Initialize I2C to flow rate sensor
