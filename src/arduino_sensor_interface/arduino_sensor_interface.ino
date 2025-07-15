@@ -84,7 +84,8 @@ void loop() {
   
   char start = 'E';
   byte payloadLength = 0;
-  byte payload[4];
+  byte cpyLength = 0;
+  byte payload[8];
 
   delay(10); // Loop delay 10 ms
 
@@ -92,7 +93,7 @@ void loop() {
     String command = Serial.readStringUntil('\n'); // Read incoming command
     command.trim(); // Remove any trailing newline or spaces
 
-    if (command.startsWith("READ")) {
+    if (command.startsWith("R")) {
       if (command.endsWith("A0")) {
         adcValue = analogRead(A0);
         start = 'R';
@@ -116,6 +117,29 @@ void loop() {
           payloadLength = sizeof(aFlow);
           memcpy(payload, &aFlow, payloadLength);
         }
+      }
+      else if (command.endsWith("AL")) {
+        // Read all command: returns 'R', ADC0 value (2 byte), ADC1 value (2 byte), Flow sensor value (4 byte), \n
+        start = 'R';
+
+        adcValue = analogRead(A0);
+        cpyLength = sizeof(adcValue);
+        memcpy(payload, &adcValue, cpyLength);
+        payloadLength = cpyLength;
+
+        adcValue = analogRead(A1);        
+        memcpy(payload+payloadLength, &adcValue, cpyLength);
+        payloadLength += cpyLength;
+        
+        error = sensor.readMeasurementData(INV_FLOW_SCALE_FACTORS_SLF3S_0600F,
+                                       aFlow, aTemperature, aSignalingFlags);
+        if (error != NO_ERROR) {
+            aFlow = 0.0;
+            start = 'E';
+        }
+        cpyLength = sizeof(aFlow);
+        memcpy(payload + payloadLength, &aFlow, cpyLength);
+        payloadLength += cpyLength;
       }
       
       if (payloadLength > 0) {
