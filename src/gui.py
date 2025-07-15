@@ -71,6 +71,9 @@ class ArduinoSerial():
 
 
 class PlotApp(QMainWindow):
+    """
+
+    """
     def __init__(self):
         super().__init__()
 
@@ -91,6 +94,7 @@ class PlotApp(QMainWindow):
         for ch in self.sensors:
             self.adc_data[ch] = deque(maxlen=self.data_window_len)
 
+        self.num_pumps = 4
 
         ############# Setup GUI ###############
         self.setWindowTitle("fluid-control")
@@ -116,15 +120,31 @@ class PlotApp(QMainWindow):
         control_row = 0
 
         # Pump control
-        controls_layout.addWidget(QLabel('Pump flow rate ():'), control_row, 0, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        self.flowrate_spinbox = QDoubleSpinBox()
-        self.flowrate_spinbox.setRange(0.0, 100.0)
-        self.flowrate_spinbox.setSingleStep(0.1)
-        self.flowrate_spinbox.setValue(0.0)
-        controls_layout.addWidget(self.flowrate_spinbox, control_row, 1, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.pump_flowrate_spinbox = []
+        self.pump_button = []
         
-        self.pump_button = QPushButton("Set Pump ON")
-        controls_layout.addWidget(self.pump_button, control_row, 2, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        for idx in range(self.num_pumps):
+            controls_layout.addWidget(QLabel(f"Pump {idx} flow rate ():"), control_row, 0, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+            
+            self.pump_flowrate_spinbox.append(QDoubleSpinBox())
+            self.pump_flowrate_spinbox[idx].setRange(0.0, 100.0)
+            self.pump_flowrate_spinbox[idx].setSingleStep(0.1)
+            self.pump_flowrate_spinbox[idx].setValue(0.0)
+            controls_layout.addWidget(self.pump_flowrate_spinbox[idx], control_row, 1, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        
+            self.pump_button.append(QPushButton(f"Set Pump {idx} ON"))
+            controls_layout.addWidget(self.pump_button[idx], control_row, 2, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+            control_row += 1
+
+            self.pump_button[idx].clicked.connect(lambda checked, index=idx: self.toggle_pump(index))
+            
+
+        self.all_pumps_on_button = QPushButton("All Pumps ON")
+        self.all_pumps_on_button.clicked.connect(self.all_pumps_on)
+        controls_layout.addWidget(self.all_pumps_on_button, control_row, 1, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.all_pumps_off_button = QPushButton("All Pumps OFF")
+        self.all_pumps_off_button.clicked.connect(self.all_pumps_off)
+        controls_layout.addWidget(self.all_pumps_off_button, control_row, 2, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         control_row += 1
 
         # Valve control
@@ -139,6 +159,8 @@ class PlotApp(QMainWindow):
         self.output_valve_combobox.addItems(["Waste", "Sample"])
         controls_layout.addWidget(self.output_valve_combobox, control_row, 1, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         control_row += 1
+
+
 
 
 
@@ -280,8 +302,28 @@ class PlotApp(QMainWindow):
                     print(f' Read packet data: {self.adc_data[ch][-1]}')
 
                     
+    def toggle_pump(self, idx: int):
+        print(f"Toggle Pump {idx} state")
 
+        if self.pump_button[idx].text() == f"Set Pump {idx} ON":
+            print(" Turn pump on")
+            self.pump_button[idx].setText(f"Set Pump {idx} OFF")
+        elif self.pump_button[idx].text() == f"Set Pump {idx} OFF":
+            print(" Turn pump off")
+            self.pump_button[idx].setText(f"Set Pump {idx} ON")
 
+    def all_pumps_on(self):
+        print("Turn all pumps on")
+        for idx in range(self.num_pumps):
+            if self.pump_button[idx].text() == f"Set Pump {idx} ON":
+                self.toggle_pump(idx)
+
+    def all_pumps_off(self):
+        print("Turn all pumps off")
+        for idx in range(self.num_pumps):
+            if self.pump_button[idx].text() == f"Set Pump {idx} OFF":
+                self.toggle_pump(idx)
+                
 
     def toggle_grid(self):
         show = self.grid_checkbox.isChecked()
