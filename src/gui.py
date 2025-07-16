@@ -17,13 +17,36 @@ import serial.tools.list_ports
 import time
 
 class ArduinoSerial():
+    """
+    Handles the connection to the Arduino board via serial communication.
+    Allows sending and receiving data, as well as scanning for available ports.
+    If no port is specified, it will scan for available ports and connect to the first Arduino
+    """
     def __init__(self, port: str, baudrate: int = 500000, timeout: float = 1):
+        """
+        Initializes the ArduinoSerial object with the specified port, baudrate, and timeout.
+        If the port is not specified, it will scan for available ports.
+        
+        :param port: Serial port to connect to (e.g., 'COM3' on Windows or '/dev/ttyUSB0' on Linux)
+        :param baudrate: Baud rate for the serial communication (default is 500000)
+        :param timeout: Timeout for the serial communication (default is 1 second)        
+        """
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self.connection = None
 
     def connect(self):
+        """
+        Connects to the Arduino board via the specified serial port.
+        If the port is not set, it scans for available ports and connects to the first one
+        that matches 'Arduino' in its description.
+        Raises a SerialException if the connection fails.
+
+        :raises serial.SerialException: If the connection to the Arduino fails
+        
+        :return: None
+        """
         try:
             # If port is not set scan ports
             if self.port == "":
@@ -43,16 +66,37 @@ class ArduinoSerial():
             print(f"Failed to connect: {e}")
 
     def disconnect(self):
+        """
+        Disconnects from the Arduino board.
+        If the connection is open, it closes the connection and prints a message.
+        
+        :return: None
+        """
         if self.connection and self.connection.is_open:
             self.connection.close()
             print('Disconnected.')
 
     def send(self, data: str):
+        """
+        Sends data to the Arduino board via the serial connection.
+        If the connection is open, it encodes the data and writes it to the serial port
+        
+        :param data: Data to send to the Arduino
+        
+        :return: None
+        """
         if self.connection and self.connection.is_open:
             self.connection.write(data.encode())
             # print(f"Sent: {data}")
 
     def receive(self) -> str:
+        """
+        Receives data from the Arduino board via the serial connection.
+        If the connection is open and there is data available, it reads a line from the serial port.
+        If no data is available, it returns an empty string.
+        
+        :return: Received data as a string, or an empty string if no data is available
+        """
         if self.connection and self.connection.is_open:
             if self.connection.in_waiting > 0:
                 return self.connection.readline()
@@ -60,21 +104,43 @@ class ArduinoSerial():
         return ""
     
     def reset_input_buffer(self):
+        """
+        Resets the input buffer of the serial connection.
+        This is useful to clear any unread data in the buffer before starting a new read operation.
+        
+        :return: None
+        """
         if self.connection and self.connection.is_open:
             self.connection.reset_input_buffer()
 
     def is_connected(self) -> bool:
+        """
+        Checks if the Arduino is connected by verifying if the connection is not None and is open.
+        
+        :return: True if connected, False otherwise
+        """
         return self.connection is not None and self.connection.is_open
 
     def __del__(self):
+        """
+        Destructor to ensure the connection is closed when the object is deleted.
+        This is called when the object goes out of scope or is explicitly deleted.
+        """
         self.disconnect()
 
 
 class PlotApp(QMainWindow):
     """
-
+    Main application class for the fluid control GUI.
+    Inherits from QMainWindow and sets up the GUI layout, controls, and plots.
+    Initializes the Arduino connection, sets up the GUI components, and handles real-time data updates.
+    The GUI includes controls for pumps, valves, and sensor plots.
     """
     def __init__(self):
+        """
+        Initializes the GUI components and layout.
+        """
+
         super().__init__()
 
         self.sample_period_ms = 100
@@ -230,6 +296,10 @@ class PlotApp(QMainWindow):
         self.update_plot()
 
     def create_menu_bar(self):
+        """
+        Creates the menu bar with File, View, and Help menus.
+        Adds actions for exporting images and CSV files, toggling the grid, and showing an about dialog.
+        """
         menu_bar = self.menuBar()
 
         # File Menu
@@ -259,9 +329,18 @@ class PlotApp(QMainWindow):
         about_action.triggered.connect(self.show_about_dialog)
 
     def show_about_dialog(self):
+        """
+        Shows an about dialog with information about the application.
+        """
         QMessageBox.information(self, "About", "Fluid Control GUI\n Created using PyQt6 + PyQtGraph")
 
     def update_plot(self):
+        """
+        Updates the plots with the latest sensor data.
+        This method is called periodically by the timer to refresh the plots with new data.
+        It reads the latest values from the sensors and updates the corresponding plot items.
+        """
+
         # print('update plot: read values from sensors and update plots')
         # for ch in range(self.num_sensor_channels):
         plot_idx = 0
@@ -284,6 +363,12 @@ class PlotApp(QMainWindow):
         #     self.y.append(("Cosine", y_cos))
 
     def grab_data(self):
+        """
+        Reads data from the Arduino sensors and updates the adc_data deque.
+        This method is called periodically by the timer to fetch new sensor readings.
+        It sends a read command to each sensor channel, waits for the response, and appends the data
+        to the corresponding deque in adc_data.
+        """
         
         for ch in self.sensors:
             self.ard.reset_input_buffer()
@@ -303,6 +388,17 @@ class PlotApp(QMainWindow):
 
                     
     def toggle_pump(self, idx: int):
+        """
+        Toggles the state of the specified pump.
+        If the pump is currently set to ON, it changes the button text to OFF and vice
+        versa. It also prints the current state of the pump to the console.
+        
+        :param idx: Index of the pump to toggle (0 to num_pumps-1)
+        """
+        if idx < 0 or idx >= self.num_pumps:
+            print(f"Invalid pump index: {idx}. Must be between 0 and {self.num_pumps - 1}.")
+            return
+
         print(f"Toggle Pump {idx} state")
 
         if self.pump_button[idx].text() == f"Set Pump {idx} ON":
@@ -313,23 +409,39 @@ class PlotApp(QMainWindow):
             self.pump_button[idx].setText(f"Set Pump {idx} ON")
 
     def all_pumps_on(self):
+        """
+        Turns all pumps on by iterating through the pump buttons and toggling each one that is currently set to OFF.
+        This method is called when the "All Pumps ON" button is clicked.
+        """
         print("Turn all pumps on")
         for idx in range(self.num_pumps):
             if self.pump_button[idx].text() == f"Set Pump {idx} ON":
                 self.toggle_pump(idx)
 
     def all_pumps_off(self):
+        """
+        Turns all pumps off by iterating through the pump buttons and toggling each one that is currently set to ON.
+        This method is called when the "All Pumps OFF" button is clicked.
+        """
         print("Turn all pumps off")
         for idx in range(self.num_pumps):
             if self.pump_button[idx].text() == f"Set Pump {idx} OFF":
                 self.toggle_pump(idx)
-                
 
     def toggle_grid(self):
+        """
+        Toggles the visibility of the grid on the plot.
+        """
         show = self.grid_checkbox.isChecked()
         self.plot_widget.showGrid(x=show, y=show)
 
     def toggle_timer(self):
+        """
+        Toggles the real-time data update timer.
+        If the timer is currently running, it stops the timer and updates the button text to "Start Real-Time".
+        If the timer is not running, it starts the timer and updates the button text to "Stop Real-Time".
+        This method is called when the "Start Real-Time" button is clicked.
+        """
         if self.toggle_timer_button.isChecked():
             self.timer_ui.start()
             self.timer_data.start()
@@ -340,12 +452,26 @@ class PlotApp(QMainWindow):
             self.toggle_timer_button.setText("Start Real-Time")
 
     def export_image(self):
+        """
+        Exports the current plot as an image file.
+        Opens a file dialog to select the save location and file name.
+        Uses the ImageExporter from pyqtgraph to save the plot as a PNG file.
+        
+        :return: None
+        """
         filename, _ = QFileDialog.getSaveFileName(self, "Save Plot Image", "", "PNG Files (*.png);;All Files (*)")
         if filename:
             exporter = pg.exporters.ImageExporter(self.plot_widget.plotItem)
             exporter.export(filename)
 
     def export_csv(self):
+        """
+        Exports the current plot data to a CSV file.
+        Opens a file dialog to select the save location and file name.
+        Uses the csv module to write the data to the CSV file.
+
+        :return: None
+        """
         filename, _ = QFileDialog.getSaveFileName(self, "Export Data to CSV", "", "CSV Files (*.csv);;All Files (*)")
         if filename:
             with open(filename, 'w', newline='') as csvfile:
