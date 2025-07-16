@@ -143,8 +143,8 @@ class PlotApp(QMainWindow):
 
         super().__init__()
 
-        self.sample_period_ms = 100
-        self.display_period_ms = 110
+        self.sample_period_ms = 50
+        self.display_period_ms = 100
 
         ############# Connect Devices ##############
         self.ard = ArduinoSerial(port="")
@@ -369,22 +369,45 @@ class PlotApp(QMainWindow):
         It sends a read command to each sensor channel, waits for the response, and appends the data
         to the corresponding deque in adc_data.
         """
+
+        self.ard.reset_input_buffer()
+        self.ard.send(f"R AL\n") # Read all sensor command
+        time.sleep(0.020)
+        data = self.ard.receive()
+        print(f"R AL command received: {data}")
+        if len(data) > 0:
+            if data[0] == int.from_bytes(b'R'):
+                payloadLength = data[1]
+                # print(f' Read packet received with length {payloadLength} bytes')
+                
+                # ADC0 data
+                data_idx = 2
+                self.adc_data['A0'].append(int.from_bytes(data[data_idx:data_idx+2], byteorder='little'))
+                data_idx += 2
+
+                # ADC1 data
+                self.adc_data['A1'].append(int.from_bytes(data[data_idx:data_idx+2], byteorder='little'))
+                data_idx += 2
+
+                # Flow sensor data
+                self.adc_data['FS'].append(struct.unpack('<f', data[data_idx:data_idx+4])[0])
+
         
-        for ch in self.sensors:
-            self.ard.reset_input_buffer()
-            self.ard.send(f"READ {ch}\n")
-            time.sleep(0.020)
-            data = self.ard.receive()
-            print(f"Sensor {ch}: {data}")
-            if len(data) > 0:
-                if data[0] == int.from_bytes(b'R'):
-                    payloadLength = data[1]
-                    print(f' Read packet received with length {payloadLength} bytes')
-                    if ch == 'FS':
-                        self.adc_data[ch].append(struct.unpack('<f', data[2:2+payloadLength])[0])
-                    else:
-                        self.adc_data[ch].append(int.from_bytes(data[2:2+payloadLength], byteorder='little'))
-                    print(f' Read packet data: {self.adc_data[ch][-1]}')
+        # for ch in self.sensors:
+        #     self.ard.reset_input_buffer()
+        #     self.ard.send(f"READ {ch}\n")
+        #     time.sleep(0.020)
+        #     data = self.ard.receive()
+        #     print(f"Sensor {ch}: {data}")
+        #     if len(data) > 0:
+        #         if data[0] == int.from_bytes(b'R'):
+        #             payloadLength = data[1]
+        #             print(f' Read packet received with length {payloadLength} bytes')
+        #             if ch == 'FS':
+        #                 self.adc_data[ch].append(struct.unpack('<f', data[2:2+payloadLength])[0])
+        #             else:
+        #                 self.adc_data[ch].append(int.from_bytes(data[2:2+payloadLength], byteorder='little'))
+        #             print(f' Read packet data: {self.adc_data[ch][-1]}')
 
                     
     def toggle_pump(self, idx: int):
