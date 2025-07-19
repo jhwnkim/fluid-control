@@ -226,10 +226,6 @@ class PlotApp(QMainWindow):
         controls_layout.addWidget(self.output_valve_combobox, control_row, 1, 1, 1) #, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         control_row += 1
 
-
-
-
-
         # Plot sections
         # self.plot_widgets = []
         plots_row = 0
@@ -340,27 +336,10 @@ class PlotApp(QMainWindow):
         This method is called periodically by the timer to refresh the plots with new data.
         It reads the latest values from the sensors and updates the corresponding plot items.
         """
-
-        # print('update plot: read values from sensors and update plots')
-        # for ch in range(self.num_sensor_channels):
         plot_idx = 0
         for ch in self.sensors:
             self.sensor_plot_data_items[plot_idx].setData(list(self.adc_data[ch]))
             plot_idx += 1
-
-        # freq = self.freq_slider.value()
-        # func = self.function_selector.currentText()
-        # self.plot_widget.clear()
-
-        # self.y = []
-        # if func in ["Sine", "Both"]:
-        #     y_sin = np.sin(freq * self.x)
-        #     self.plot_widget.plot(self.x, y_sin, pen='r', name="Sine")
-        #     self.y.append(("Sine", y_sin))
-        # if func in ["Cosine", "Both"]:
-        #     y_cos = np.cos(freq * self.x)
-        #     self.plot_widget.plot(self.x, y_cos, pen='b', name="Cosine")
-        #     self.y.append(("Cosine", y_cos))
 
     def grab_data(self):
         """
@@ -391,24 +370,6 @@ class PlotApp(QMainWindow):
 
                 # Flow sensor data
                 self.adc_data['FS'].append(struct.unpack('<f', data[data_idx:data_idx+4])[0])
-
-        
-        # for ch in self.sensors:
-        #     self.ard.reset_input_buffer()
-        #     self.ard.send(f"READ {ch}\n")
-        #     time.sleep(0.020)
-        #     data = self.ard.receive()
-        #     print(f"Sensor {ch}: {data}")
-        #     if len(data) > 0:
-        #         if data[0] == int.from_bytes(b'R'):
-        #             payloadLength = data[1]
-        #             print(f' Read packet received with length {payloadLength} bytes')
-        #             if ch == 'FS':
-        #                 self.adc_data[ch].append(struct.unpack('<f', data[2:2+payloadLength])[0])
-        #             else:
-        #                 self.adc_data[ch].append(int.from_bytes(data[2:2+payloadLength], byteorder='little'))
-        #             print(f' Read packet data: {self.adc_data[ch][-1]}')
-
                     
     def toggle_pump(self, idx: int):
         """
